@@ -35,6 +35,7 @@ import { ShowVolumeBackups } from "@/components/dashboard/application/volume-bac
 import { DeleteService } from "@/components/dashboard/compose/delete-service";
 import { ContainerFreeMonitoring } from "@/components/dashboard/monitoring/free/container/show-free-container-monitoring";
 import { ContainerPaidMonitoring } from "@/components/dashboard/monitoring/paid/container/show-paid-container-monitoring";
+import { ServiceMonitoringPanel } from "@/components/dashboard/resource-metrics/service-monitoring-panel";
 import { ServiceResourceUsage } from "@/components/dashboard/resource-metrics/service-usage";
 import { DashboardLayout } from "@/components/layouts/dashboard-layout";
 import { AdvanceBreadcrumb } from "@/components/shared/advance-breadcrumb";
@@ -273,12 +274,9 @@ const Service = (
 											{data?.sourceType !== "docker" && (
 												<TabsTrigger value="patches">Patches</TabsTrigger>
 											)}
-											{permissions?.monitoring.read &&
-												((data?.serverId && isCloud) || !data?.server) && (
-													<TabsTrigger value="monitoring">
-														Monitoring
-													</TabsTrigger>
-												)}
+											{permissions?.monitoring.read && (
+												<TabsTrigger value="monitoring">Monitoring</TabsTrigger>
+											)}
 											{permissions?.service.create && (
 												<TabsTrigger value="advanced">Advanced</TabsTrigger>
 											)}
@@ -302,6 +300,11 @@ const Service = (
 										<TabsContent value="monitoring">
 											<div className="pt-2.5">
 												<div className="flex flex-col gap-4 border rounded-lg p-6">
+													<ServiceMonitoringPanel
+														projectId={projectId}
+														environmentId={environmentId}
+														serviceId={applicationId}
+													/>
 													{data?.serverId && isCloud ? (
 														<ContainerPaidMonitoring
 															appName={data?.appName || ""}
@@ -310,7 +313,7 @@ const Service = (
 																data?.server?.metricsConfig?.server?.token || ""
 															}
 														/>
-													) : (
+													) : !data?.serverId ? (
 														<>
 															{/* {monitoring?.enabledFeatures &&
 															isCloud &&
@@ -342,7 +345,7 @@ const Service = (
 															</div>
 															{/* )} */}
 														</>
-													)}
+													) : null}
 												</div>
 											</div>
 										</TabsContent>
