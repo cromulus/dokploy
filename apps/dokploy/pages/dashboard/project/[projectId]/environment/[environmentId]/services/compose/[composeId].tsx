@@ -31,6 +31,7 @@ import { UpdateCompose } from "@/components/dashboard/compose/update-compose";
 import { ShowBackups } from "@/components/dashboard/database/backups/show-backups";
 import { ComposeFreeMonitoring } from "@/components/dashboard/monitoring/free/container/show-free-compose-monitoring";
 import { ComposePaidMonitoring } from "@/components/dashboard/monitoring/paid/container/show-paid-compose-monitoring";
+import { ServiceResourceUsage } from "@/components/dashboard/resource-metrics/service-usage";
 import { DashboardLayout } from "@/components/layouts/dashboard-layout";
 import { AdvanceBreadcrumb } from "@/components/shared/advance-breadcrumb";
 import { StatusTooltip } from "@/components/shared/status-tooltip";
@@ -129,6 +130,12 @@ const Service = (
 									<span className="text-sm text-muted-foreground">
 										{data?.appName}
 									</span>
+									<ServiceResourceUsage
+										projectId={projectId}
+										environmentId={environmentId}
+										serviceId={composeId}
+										className="mt-1"
+									/>
 								</div>
 								<div className="flex flex-col h-fit w-fit gap-2">
 									<div className="flex flex-row h-fit w-fit gap-2">

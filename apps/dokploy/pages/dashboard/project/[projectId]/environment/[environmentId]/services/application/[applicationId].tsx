@@ -35,6 +35,7 @@ import { ShowVolumeBackups } from "@/components/dashboard/application/volume-bac
 import { DeleteService } from "@/components/dashboard/compose/delete-service";
 import { ContainerFreeMonitoring } from "@/components/dashboard/monitoring/free/container/show-free-container-monitoring";
 import { ContainerPaidMonitoring } from "@/components/dashboard/monitoring/paid/container/show-paid-container-monitoring";
+import { ServiceResourceUsage } from "@/components/dashboard/resource-metrics/service-usage";
 import { DashboardLayout } from "@/components/layouts/dashboard-layout";
 import { AdvanceBreadcrumb } from "@/components/shared/advance-breadcrumb";
 import { StatusTooltip } from "@/components/shared/status-tooltip";
@@ -142,6 +143,12 @@ const Service = (
 								<span className="text-sm text-muted-foreground">
 									{data?.appName}
 								</span>
+								<ServiceResourceUsage
+									projectId={projectId}
+									environmentId={environmentId}
+									serviceId={applicationId}
+									className="mt-1"
+								/>
 							</div>
 							<div className="flex flex-col h-fit w-fit gap-2">
 								<div className="flex flex-row h-fit w-fit gap-2">
