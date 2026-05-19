@@ -31,6 +31,7 @@ import { UpdateCompose } from "@/components/dashboard/compose/update-compose";
 import { ShowBackups } from "@/components/dashboard/database/backups/show-backups";
 import { ComposeFreeMonitoring } from "@/components/dashboard/monitoring/free/container/show-free-compose-monitoring";
 import { ComposePaidMonitoring } from "@/components/dashboard/monitoring/paid/container/show-paid-compose-monitoring";
+import { ServiceMonitoringPanel } from "@/components/dashboard/resource-metrics/service-monitoring-panel";
 import { ServiceResourceUsage } from "@/components/dashboard/resource-metrics/service-usage";
 import { DashboardLayout } from "@/components/layouts/dashboard-layout";
 import { AdvanceBreadcrumb } from "@/components/shared/advance-breadcrumb";
@@ -262,12 +263,9 @@ const Service = (
 											{data?.sourceType !== "raw" && (
 												<TabsTrigger value="patches">Patches</TabsTrigger>
 											)}
-											{permissions?.monitoring.read &&
-												((data?.serverId && isCloud) || !data?.server) && (
-													<TabsTrigger value="monitoring">
-														Monitoring
-													</TabsTrigger>
-												)}
+											{permissions?.monitoring.read && (
+												<TabsTrigger value="monitoring">Monitoring</TabsTrigger>
+											)}
 											{permissions?.service.create && (
 												<TabsTrigger value="advanced">Advanced</TabsTrigger>
 											)}
@@ -328,6 +326,12 @@ const Service = (
 										<TabsContent value="monitoring">
 											<div className="pt-2.5">
 												<div className="flex flex-col border rounded-lg ">
+													<ServiceMonitoringPanel
+														projectId={projectId}
+														environmentId={environmentId}
+														serviceId={composeId}
+														className="m-6 mb-0"
+													/>
 													{data?.serverId && isCloud ? (
 														<ComposePaidMonitoring
 															serverId={data?.serverId || ""}

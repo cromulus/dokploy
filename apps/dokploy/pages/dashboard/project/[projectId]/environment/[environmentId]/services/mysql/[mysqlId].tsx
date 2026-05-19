@@ -22,6 +22,7 @@ import { ShowExternalMysqlCredentials } from "@/components/dashboard/mysql/gener
 import { ShowGeneralMysql } from "@/components/dashboard/mysql/general/show-general-mysql";
 import { ShowInternalMysqlCredentials } from "@/components/dashboard/mysql/general/show-internal-mysql-credentials";
 import { UpdateMysql } from "@/components/dashboard/mysql/update-mysql";
+import { ServiceMonitoringPanel } from "@/components/dashboard/resource-metrics/service-monitoring-panel";
 import { ServiceResourceUsage } from "@/components/dashboard/resource-metrics/service-usage";
 import { ShowDatabaseAdvancedSettings } from "@/components/dashboard/shared/show-database-advanced-settings";
 import { MysqlIcon } from "@/components/icons/data-tools-icons";
@@ -210,11 +211,7 @@ const MySql = (
 											<TabsList
 												className={cn(
 													"md:grid md:w-fit max-md:overflow-y-scroll justify-start ",
-													isCloud && data?.serverId
-														? "md:grid-cols-6"
-														: data?.serverId
-															? "md:grid-cols-5"
-															: "md:grid-cols-6",
+													"md:grid-cols-6",
 												)}
 											>
 												<TabsTrigger value="general">General</TabsTrigger>
@@ -226,12 +223,11 @@ const MySql = (
 												{permissions?.logs.read && (
 													<TabsTrigger value="logs">Logs</TabsTrigger>
 												)}
-												{permissions?.monitoring.read &&
-													((data?.serverId && isCloud) || !data?.server) && (
-														<TabsTrigger value="monitoring">
-															Monitoring
-														</TabsTrigger>
-													)}
+												{permissions?.monitoring.read && (
+													<TabsTrigger value="monitoring">
+														Monitoring
+													</TabsTrigger>
+												)}
 												<TabsTrigger value="backups">Backups</TabsTrigger>
 												{permissions?.service.create && (
 													<TabsTrigger value="advanced">Advanced</TabsTrigger>
@@ -257,6 +253,11 @@ const MySql = (
 											<TabsContent value="monitoring">
 												<div className="pt-2.5">
 													<div className="flex flex-col gap-4 border rounded-lg p-6">
+														<ServiceMonitoringPanel
+															projectId={projectId}
+															environmentId={environmentId}
+															serviceId={mysqlId}
+														/>
 														{data?.serverId && isCloud ? (
 															<ContainerPaidMonitoring
 																appName={data?.appName || ""}
@@ -266,13 +267,13 @@ const MySql = (
 																	""
 																}
 															/>
-														) : (
+														) : !data?.serverId ? (
 															<>
 																<ContainerFreeMonitoring
 																	appName={data?.appName || ""}
 																/>
 															</>
-														)}
+														) : null}
 													</div>
 												</div>
 											</TabsContent>

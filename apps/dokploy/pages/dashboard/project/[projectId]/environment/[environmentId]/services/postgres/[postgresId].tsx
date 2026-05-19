@@ -22,6 +22,7 @@ import { ShowExternalPostgresCredentials } from "@/components/dashboard/postgres
 import { ShowGeneralPostgres } from "@/components/dashboard/postgres/general/show-general-postgres";
 import { ShowInternalPostgresCredentials } from "@/components/dashboard/postgres/general/show-internal-postgres-credentials";
 import { UpdatePostgres } from "@/components/dashboard/postgres/update-postgres";
+import { ServiceMonitoringPanel } from "@/components/dashboard/resource-metrics/service-monitoring-panel";
 import { ServiceResourceUsage } from "@/components/dashboard/resource-metrics/service-usage";
 import { ShowDatabaseAdvancedSettings } from "@/components/dashboard/shared/show-database-advanced-settings";
 import { PostgresqlIcon } from "@/components/icons/data-tools-icons";
@@ -211,11 +212,7 @@ const Postgresql = (
 										<TabsList
 											className={cn(
 												"md:grid md:w-fit max-md:overflow-y-scroll justify-start",
-												isCloud && data?.serverId
-													? "md:grid-cols-6"
-													: data?.serverId
-														? "md:grid-cols-5"
-														: "md:grid-cols-6",
+												"md:grid-cols-6",
 											)}
 										>
 											<TabsTrigger value="general">General</TabsTrigger>
@@ -227,12 +224,9 @@ const Postgresql = (
 											{permissions?.logs.read && (
 												<TabsTrigger value="logs">Logs</TabsTrigger>
 											)}
-											{permissions?.monitoring.read &&
-												((data?.serverId && isCloud) || !data?.server) && (
-													<TabsTrigger value="monitoring">
-														Monitoring
-													</TabsTrigger>
-												)}
+											{permissions?.monitoring.read && (
+												<TabsTrigger value="monitoring">Monitoring</TabsTrigger>
+											)}
 											<TabsTrigger value="backups">Backups</TabsTrigger>
 											{permissions?.service.create && (
 												<TabsTrigger value="advanced">Advanced</TabsTrigger>
@@ -262,6 +256,11 @@ const Postgresql = (
 										<TabsContent value="monitoring">
 											<div className="pt-2.5">
 												<div className="flex flex-col gap-4 border rounded-lg p-6">
+													<ServiceMonitoringPanel
+														projectId={projectId}
+														environmentId={environmentId}
+														serviceId={postgresId}
+													/>
 													{data?.serverId && isCloud ? (
 														<ContainerPaidMonitoring
 															appName={data?.appName || ""}
@@ -274,13 +273,13 @@ const Postgresql = (
 																data?.server?.metricsConfig?.server?.token || ""
 															}
 														/>
-													) : (
+													) : !data?.serverId ? (
 														<>
 															<ContainerFreeMonitoring
 																appName={data?.appName || ""}
 															/>
 														</>
-													)}
+													) : null}
 												</div>
 											</div>
 										</TabsContent>

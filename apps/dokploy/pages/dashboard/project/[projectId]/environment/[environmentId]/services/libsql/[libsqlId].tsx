@@ -22,6 +22,7 @@ import { ShowInternalLibsqlCredentials } from "@/components/dashboard/libsql/gen
 import { UpdateLibsql } from "@/components/dashboard/libsql/update-libsql";
 import { ContainerFreeMonitoring } from "@/components/dashboard/monitoring/free/container/show-free-container-monitoring";
 import { ContainerPaidMonitoring } from "@/components/dashboard/monitoring/paid/container/show-paid-container-monitoring";
+import { ServiceMonitoringPanel } from "@/components/dashboard/resource-metrics/service-monitoring-panel";
 import { ServiceResourceUsage } from "@/components/dashboard/resource-metrics/service-usage";
 import { ShowDatabaseAdvancedSettings } from "@/components/dashboard/shared/show-database-advanced-settings";
 import { LibsqlIcon } from "@/components/icons/data-tools-icons";
@@ -196,19 +197,13 @@ const Libsql = (
 										<TabsList
 											className={cn(
 												"md:grid md:w-fit max-md:overflow-y-scroll justify-start",
-												isCloud && data?.serverId
-													? "md:grid-cols-6"
-													: data?.serverId
-														? "md:grid-cols-5"
-														: "md:grid-cols-6",
+												"md:grid-cols-6",
 											)}
 										>
 											<TabsTrigger value="general">General</TabsTrigger>
 											<TabsTrigger value="environment">Environment</TabsTrigger>
 											<TabsTrigger value="logs">Logs</TabsTrigger>
-											{((data?.serverId && isCloud) || !data?.server) && (
-												<TabsTrigger value="monitoring">Monitoring</TabsTrigger>
-											)}
+											<TabsTrigger value="monitoring">Monitoring</TabsTrigger>
 											<TabsTrigger value="backups">Backups</TabsTrigger>
 											<TabsTrigger value="advanced">Advanced</TabsTrigger>
 										</TabsList>
@@ -229,6 +224,11 @@ const Libsql = (
 									<TabsContent value="monitoring">
 										<div className="pt-2.5">
 											<div className="flex flex-col gap-4 border rounded-lg p-6">
+												<ServiceMonitoringPanel
+													projectId={projectId}
+													environmentId={environmentId}
+													serviceId={libsqlId}
+												/>
 												{data?.serverId && isCloud ? (
 													<ContainerPaidMonitoring
 														appName={data?.appName || ""}
@@ -237,7 +237,7 @@ const Libsql = (
 															data?.server?.metricsConfig?.server?.token || ""
 														}
 													/>
-												) : (
+												) : !data?.serverId ? (
 													<>
 														{/* {monitoring?.enabledFeatures && (
 															<div className="flex flex-row border w-fit p-4 rounded-lg items-center gap-2">
@@ -267,7 +267,7 @@ const Libsql = (
 														{/* </div> */}
 														{/* )} */}
 													</>
-												)}
+												) : null}
 											</div>
 										</div>
 									</TabsContent>

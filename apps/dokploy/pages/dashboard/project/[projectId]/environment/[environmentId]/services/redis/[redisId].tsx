@@ -21,6 +21,7 @@ import { ShowExternalRedisCredentials } from "@/components/dashboard/redis/gener
 import { ShowGeneralRedis } from "@/components/dashboard/redis/general/show-general-redis";
 import { ShowInternalRedisCredentials } from "@/components/dashboard/redis/general/show-internal-redis-credentials";
 import { UpdateRedis } from "@/components/dashboard/redis/update-redis";
+import { ServiceMonitoringPanel } from "@/components/dashboard/resource-metrics/service-monitoring-panel";
 import { ServiceResourceUsage } from "@/components/dashboard/resource-metrics/service-usage";
 import { ShowDatabaseAdvancedSettings } from "@/components/dashboard/shared/show-database-advanced-settings";
 import { RedisIcon } from "@/components/icons/data-tools-icons";
@@ -209,11 +210,7 @@ const Redis = (
 										<TabsList
 											className={cn(
 												"md:grid md:w-fit max-md:overflow-y-scroll justify-start",
-												isCloud && data?.serverId
-													? "md:grid-cols-5"
-													: data?.serverId
-														? "md:grid-cols-4"
-														: "md:grid-cols-5",
+												"md:grid-cols-5",
 											)}
 										>
 											<TabsTrigger value="general">General</TabsTrigger>
@@ -225,12 +222,9 @@ const Redis = (
 											{permissions?.logs.read && (
 												<TabsTrigger value="logs">Logs</TabsTrigger>
 											)}
-											{permissions?.monitoring.read &&
-												((data?.serverId && isCloud) || !data?.server) && (
-													<TabsTrigger value="monitoring">
-														Monitoring
-													</TabsTrigger>
-												)}
+											{permissions?.monitoring.read && (
+												<TabsTrigger value="monitoring">Monitoring</TabsTrigger>
+											)}
 											{permissions?.service.create && (
 												<TabsTrigger value="advanced">Advanced</TabsTrigger>
 											)}
@@ -255,6 +249,11 @@ const Redis = (
 										<TabsContent value="monitoring">
 											<div className="pt-2.5">
 												<div className="flex flex-col gap-4 border rounded-lg p-6">
+													<ServiceMonitoringPanel
+														projectId={projectId}
+														environmentId={environmentId}
+														serviceId={redisId}
+													/>
 													{data?.serverId && isCloud ? (
 														<ContainerPaidMonitoring
 															appName={data?.appName || ""}
@@ -263,7 +262,7 @@ const Redis = (
 																data?.server?.metricsConfig?.server?.token || ""
 															}
 														/>
-													) : (
+													) : !data?.serverId ? (
 														<>
 															{/* {monitoring?.enabledFeatures && (
 															<div className="flex flex-row border w-fit p-4 rounded-lg items-center gap-2">
@@ -293,7 +292,7 @@ const Redis = (
 															{/* </div> */}
 															{/* )} */}
 														</>
-													)}
+													) : null}
 												</div>
 											</div>
 										</TabsContent>
