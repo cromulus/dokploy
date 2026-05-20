@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       image:
-        description: "Full image ref to push. Defaults to ghcr.io/<owner>/dokploy:canary-plus-<sha>."
+        description: "Full image ref to push. Defaults to ghcr.io/<owner>/<repo>:canary-plus-<sha>."
         required: false
         type: string
       platforms:
@@ -21,7 +21,7 @@ permissions:
 
 jobs:
   build-and-push:
-    if: github.repository == 'cromulus/dokploy'
+    if: github.repository == 'cromulus/my-dokploy'
     runs-on: ubuntu-latest
     env:
       IMAGE_INPUT: ${{ inputs.image || '' }}
@@ -48,7 +48,7 @@ jobs:
             IMAGE="$IMAGE_INPUT"
           else
             SHORT_SHA="${GITHUB_SHA::12}"
-            IMAGE="ghcr.io/${GITHUB_REPOSITORY_OWNER}/dokploy:canary-plus-${SHORT_SHA}"
+            IMAGE="ghcr.io/${GITHUB_REPOSITORY}:canary-plus-${SHORT_SHA}"
           fi
 
           echo "image=${IMAGE}" >> "$GITHUB_OUTPUT"
