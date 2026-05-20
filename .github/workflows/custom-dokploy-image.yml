@@ -1,0 +1,67 @@
+name: Build Custom Dokploy Image
+
+on:
+  push:
+    branches: ["cromulus/canary-plus"]
+  workflow_dispatch:
+    inputs:
+      image:
+        description: "Full image ref to push. Defaults to ghcr.io/<owner>/dokploy:canary-plus-<sha>."
+        required: false
+        type: string
+      platforms:
+        description: "Docker platforms to build."
+        required: false
+        default: "linux/amd64"
+        type: string
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build-and-push:
+    if: github.repository == 'cromulus/dokploy'
+    runs-on: ubuntu-latest
+    env:
+      IMAGE_INPUT: ${{ inputs.image || '' }}
+      PLATFORMS_INPUT: ${{ inputs.platforms || 'linux/amd64' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Resolve image
+        id: image
+        run: |
+          if [ -n "$IMAGE_INPUT" ]; then
+            IMAGE="$IMAGE_INPUT"
+          else
+            SHORT_SHA="${GITHUB_SHA::12}"
+            IMAGE="ghcr.io/${GITHUB_REPOSITORY_OWNER}/dokploy:canary-plus-${SHORT_SHA}"
+          fi
+
+          echo "image=${IMAGE}" >> "$GITHUB_OUTPUT"
+          echo "Image: ${IMAGE}" >> "$GITHUB_STEP_SUMMARY"
+          echo "Platforms: ${PLATFORMS_INPUT}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Prepare env files
+        run: |
+          cp apps/dokploy/.env.production.example .env.production
+          cp apps/dokploy/.env.production.example apps/dokploy/.env.production
+
+      - name: Build and push custom Dokploy image
+        env:
+          IMAGE: ${{ steps.image.outputs.image }}
+          DOCKER_PLATFORMS: ${{ env.PLATFORMS_INPUT }}
+        run: ./apps/dokploy/docker/push.sh custom
