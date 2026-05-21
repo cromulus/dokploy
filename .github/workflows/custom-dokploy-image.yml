@@ -3,10 +3,11 @@ name: Build Custom Dokploy Image
 on:
   push:
     branches: ["cromulus/canary-plus"]
+    tags: ["my-dokploy-v*"]
   workflow_dispatch:
     inputs:
       image:
-        description: "Full image ref to push. Defaults to ghcr.io/<owner>/<repo>:canary-plus-<sha>."
+        description: "Full image ref to push. Defaults to ghcr.io/<owner>/<repo>:<git-tag> for tags, otherwise canary-plus-<sha>."
         required: false
         type: string
       platforms:
@@ -46,6 +47,9 @@ jobs:
         run: |
           if [ -n "$IMAGE_INPUT" ]; then
             IMAGE="$IMAGE_INPUT"
+          elif [ "$GITHUB_REF_TYPE" = "tag" ]; then
+            SAFE_REF="${GITHUB_REF_NAME//\//-}"
+            IMAGE="ghcr.io/${GITHUB_REPOSITORY}:${SAFE_REF}"
           else
             SHORT_SHA="${GITHUB_SHA::12}"
             IMAGE="ghcr.io/${GITHUB_REPOSITORY}:canary-plus-${SHORT_SHA}"

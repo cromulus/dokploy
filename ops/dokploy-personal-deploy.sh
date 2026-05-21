@@ -18,6 +18,7 @@ usage() {
 Usage:
   ops/dokploy-personal-deploy.sh migrate --image IMAGE [options]
   ops/dokploy-personal-deploy.sh rollback [--image IMAGE] [options]
+  ops/dokploy-personal-deploy.sh backup [options]
   ops/dokploy-personal-deploy.sh status [options]
   ops/dokploy-personal-deploy.sh history [options]
 
@@ -28,13 +29,14 @@ Default target:
 Commands:
   migrate   Update the remote Docker Swarm service to IMAGE and save the previous image for rollback.
   rollback  Revert to the previous image saved by the last migrate, or to --image if provided.
+  backup    Save /etc/dokploy, a dokploy-postgres dump, and service metadata on the remote host.
   status    Show the current service image, replica status, update status, and recent tasks.
   history   Show saved deploy and rollback metadata files on the remote host.
 
 Options:
   --host HOST                  SSH host. Default: $DOKPLOY_HOST or ubuntu@dokploy.thesolarium.io.
   --service SERVICE            Docker Swarm service name. Default: $DOKPLOY_SERVICE or dokploy.
-  --image IMAGE                Full image ref, for example ghcr.io/cromulus/my-dokploy:canary-plus-abc123.
+  --image IMAGE                Full image ref, for example ghcr.io/cromulus/my-dokploy:my-dokploy-v0.29.4-1.
   --state-dir DIR              Remote state dir. Default: /var/lib/dokploy-personal-deploy.
   --timeout SECONDS            Service convergence timeout. Default: 600.
   --registry REGISTRY          Registry for login. Default: ghcr.io.
@@ -47,10 +49,13 @@ Options:
 Private GHCR example:
   GHCR_USER=cromulus GHCR_TOKEN=github_pat_xxx \
     ops/dokploy-personal-deploy.sh migrate \
-      --image ghcr.io/cromulus/my-dokploy:canary-plus-abc123
+      --image ghcr.io/cromulus/my-dokploy:my-dokploy-v0.29.4-1
 
 Rollback example:
   ops/dokploy-personal-deploy.sh rollback
+
+Backup example:
+  ops/dokploy-personal-deploy.sh backup
 
 Important:
   Rollback reverts the Dokploy service image only. If the new image ran database migrations,
@@ -81,7 +86,7 @@ fi
 shift || true
 
 case "$COMMAND" in
-	migrate | rollback | status | history)
+	migrate | rollback | backup | status | history)
 		;;
 	-h | --help)
 		usage
@@ -185,15 +190,29 @@ remote_docker_login() {
 }
 
 run_remote() {
-	ssh "$HOST" bash -s -- "$COMMAND" "$SERVICE" "$IMAGE" "$STATE_DIR" "$TIMEOUT" "$NO_PULL" <<'REMOTE'
+	local command_q
+	local service_q
+	local image_q
+	local state_dir_q
+	local timeout_q
+	local no_pull_q
+
+	command_q="$(shell_quote "$COMMAND")"
+	service_q="$(shell_quote "$SERVICE")"
+	image_q="$(shell_quote "$IMAGE")"
+	state_dir_q="$(shell_quote "$STATE_DIR")"
+	timeout_q="$(shell_quote "$TIMEOUT")"
+	no_pull_q="$(shell_quote "$NO_PULL")"
+
+	ssh "$HOST" "REMOTE_COMMAND=$command_q REMOTE_SERVICE=$service_q REMOTE_IMAGE=$image_q REMOTE_STATE_DIR=$state_dir_q REMOTE_TIMEOUT=$timeout_q REMOTE_NO_PULL=$no_pull_q bash -s" <<'REMOTE'
 set -euo pipefail
 
-command="$1"
-service="$2"
-requested_image="$3"
-state_dir="$4"
-timeout="$5"
-no_pull="$6"
+command="${REMOTE_COMMAND:?}"
+service="${REMOTE_SERVICE:?}"
+requested_image="${REMOTE_IMAGE:-}"
+state_dir="${REMOTE_STATE_DIR:?}"
+timeout="${REMOTE_TIMEOUT:?}"
+no_pull="${REMOTE_NO_PULL:?}"
 
 die() {
 	echo "error: $*" >&2
@@ -291,6 +310,56 @@ write_state() {
 	fi
 
 	printf "%s\n" "$state_file"
+}
+
+find_postgres_container() {
+	local container_id
+
+	container_id="$(
+		docker_cmd ps \
+			--filter label=com.docker.swarm.service.name=dokploy-postgres \
+			-q | head -1
+	)"
+
+	if [[ -z "$container_id" ]]; then
+		container_id="$(docker_cmd ps --filter name=dokploy-postgres -q | head -1)"
+	fi
+
+	[[ -n "$container_id" ]] || die "could not find a running dokploy-postgres container"
+	printf "%s\n" "$container_id"
+}
+
+backup() {
+	local ts backup_dir pg_container
+
+	ts="$(date -u +%Y%m%dT%H%M%SZ)"
+	backup_dir="$state_dir/backups/$ts"
+	pg_container="$(find_postgres_container)"
+
+	sudo -n mkdir -p "$backup_dir"
+	sudo -n chmod 0750 "$state_dir" "$state_dir/backups" "$backup_dir"
+
+	log "Writing backup to $backup_dir"
+	log "Archiving /etc/dokploy"
+	sudo -n tar -C /etc -czf "$backup_dir/etc-dokploy.tgz" dokploy
+
+	log "Dumping dokploy-postgres from container $pg_container"
+	docker_cmd exec "$pg_container" sh -lc \
+		'pg_dump -U "${POSTGRES_USER:-dokploy}" -d "${POSTGRES_DB:-dokploy}" -Fc' |
+		sudo -n dd of="$backup_dir/dokploy-postgres.dump" status=none
+
+	log "Saving Docker service metadata"
+	docker_cmd service inspect "$service" | sudo -n tee "$backup_dir/dokploy-service.json" >/dev/null
+	docker_cmd service ls | sudo -n tee "$backup_dir/docker-services.txt" >/dev/null
+	docker_cmd service ps "$service" --no-trunc | sudo -n tee "$backup_dir/dokploy-service-ps.txt" >/dev/null
+	docker_cmd volume inspect dokploy-postgres-database 2>/dev/null |
+		sudo -n tee "$backup_dir/dokploy-postgres-volume.json" >/dev/null || true
+
+	sudo -n sha256sum "$backup_dir"/* | sudo -n tee "$backup_dir/SHA256SUMS" >/dev/null
+	sudo -n ln -sfn "$backup_dir" "$state_dir/latest-backup"
+
+	log "Backup complete: $backup_dir"
+	sudo -n du -sh "$backup_dir"
 }
 
 last_deploy_previous_image() {
@@ -424,6 +493,13 @@ history() {
 	echo
 	echo "Saved actions:"
 	sudo -n find "$state_dir" -maxdepth 1 -type f -name '*.env' -printf '%TY-%Tm-%Td %TH:%TM:%TS %p\n' | sort -r | head -25
+	echo
+	echo "Backups:"
+	if sudo -n test -d "$state_dir/backups"; then
+		sudo -n find "$state_dir/backups" -mindepth 1 -maxdepth 1 -type d -printf '%TY-%Tm-%Td %TH:%TM:%TS %p\n' | sort -r | head -25
+	else
+		echo "  none"
+	fi
 }
 
 require_sudo
@@ -435,6 +511,9 @@ case "$command" in
 		;;
 	rollback)
 		rollback
+		;;
+	backup)
+		backup
 		;;
 	status)
 		show_service_status
